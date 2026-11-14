@@ -1,0 +1,54 @@
+name: Build macOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  OUTPUT_PATH: dist
+  CLIENT_PROJECT: external/ClassicUO/src/ClassicUO.Client/ClassicUO.Client.csproj
+  BOOTSTRAP_PROJECT: external/ClassicUO/src/ClassicUO.Bootstrap/src/ClassicUO.Bootstrap.csproj
+
+jobs:
+  build:
+    runs-on: macos-14
+    strategy:
+      matrix:
+        include:
+          - target: osx-x64
+          - target: osx-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build Bootstrap app
+        run: >-
+          dotnet publish "$BOOTSTRAP_PROJECT" -c Release
+          -o "$OUTPUT_PATH"
+          /p:OutputType=WinExe
+
+      - name: Publish ClassicUO-KR
+        run: >-
+          dotnet publish "$CLIENT_PROJECT" -c Release
+          -r "${{ matrix.target }}"
+          -o "$OUTPUT_PATH"
+          /p:IS_DEV_BUILD=true
+          /p:NativeLib=Shared
+          /p:OutputType=Library
+
+      - name: Package
+        run: ditto -c -k --sequesterRsrc --keepParent "$OUTPUT_PATH" "ClassicUO-KR-${{ matrix.target }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ClassicUO-KR-${{ matrix.target }}
+          path: ClassicUO-KR-${{ matrix.target }}.zip
