@@ -11,7 +11,6 @@ permissions:
 env:
   OUTPUT_PATH: dist
   CLIENT_PROJECT: external/ClassicUO/src/ClassicUO.Client/ClassicUO.Client.csproj
-  BOOTSTRAP_PROJECT: external/ClassicUO/src/ClassicUO.Bootstrap/src/ClassicUO.Bootstrap.csproj
 
 jobs:
   build:
@@ -31,23 +30,47 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Build Bootstrap app
-        run: >-
-          dotnet publish "$BOOTSTRAP_PROJECT" -c Release
-          -o "$OUTPUT_PATH"
-          /p:OutputType=WinExe
-
       - name: Publish ClassicUO-KR
         run: >-
           dotnet publish "$CLIENT_PROJECT" -c Release
           -r "${{ matrix.target }}"
           -o "$OUTPUT_PATH"
           /p:IS_DEV_BUILD=true
-          /p:NativeLib=Shared
-          /p:OutputType=Library
+          /p:OutputType=Exe
+      - name: Verify executable
+        run: test -x "$OUTPUT_PATH/cuo"
+
+      - name: Package as macOS app
+        run: |
+          APP_BUNDLE="ClassicUO-KR-${{ matrix.target }}.app"
+          mkdir -p "$APP_BUNDLE/Contents/MacOS"
+          cp -R "$OUTPUT_PATH/." "$APP_BUNDLE/Contents/MacOS/"
+          rm -f "$APP_BUNDLE"/Contents/MacOS/*.pdb
+          rm -rf "$APP_BUNDLE"/Contents/MacOS/*.dSYM
+          chmod +x "$APP_BUNDLE/Contents/MacOS/cuo"
+          cat > "$APP_BUNDLE/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key>
+            <string>cuo</string>
+            <key>CFBundleIdentifier</key>
+            <string>eu.classicuo.kr</string>
+            <key>CFBundleName</key>
+            <string>ClassicUO-KR</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+          </dict>
+          </plist>
+          PLIST
 
       - name: Package
-        run: ditto -c -k --sequesterRsrc --keepParent "$OUTPUT_PATH" "ClassicUO-KR-${{ matrix.target }}.zip"
+        run: ditto -c -k --sequesterRsrc --keepParent "ClassicUO-KR-${{ matrix.target }}.app" "ClassicUO-KR-${{ matrix.target }}.zip"
 
       - uses: actions/upload-artifact@v4
         with:
