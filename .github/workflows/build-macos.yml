@@ -15,7 +15,8 @@ env:
 
 jobs:
   build:
-    runs-on: macos-14
+    # Upstream's test workflow uses this supported Intel macOS runner label.
+    runs-on: macos-15-intel
     strategy:
       matrix:
         include:
