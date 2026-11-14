@@ -36,7 +36,6 @@ jobs:
           -r "${{ matrix.target }}"
           -o "$OUTPUT_PATH"
           /p:IS_DEV_BUILD=true
-          /p:OutputType=Exe
       - name: Verify executable
         run: test -x "$OUTPUT_PATH/cuo"
 
